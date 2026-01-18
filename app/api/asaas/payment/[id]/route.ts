@@ -1,9 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Response type interfaces
+interface PaymentPixResponse {
+  id: string
+  value: number
+  status: string
+  pixQrCode: string
+  pixCopyPaste: string
+  expiresAt: string
+}
+
+interface PaymentNonPixResponse {
+  id: string
+  value: number
+  status: string
+  paymentUrl: string
+}
+
+interface ErrorResponse {
+  error: string
+}
+
+type PaymentResponse = PaymentPixResponse | PaymentNonPixResponse | ErrorResponse
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse<PaymentResponse>> {
   try {
     const { id } = await params
 
@@ -15,7 +38,7 @@ export async function GET(
     }
 
     const asaasApiKey = process.env.ASAAS_API_KEY
-    const asaasApiUrl = process.env.ASAAS_API_URL || 'https://sandbox.asaas.com/api/v3'
+    const asaasApiUrl = process.env.ASAAS_API_BASE_URL || 'https://sandbox.asaas.com/api/v3'
 
     if (!asaasApiKey) {
       console.error('ASAAS_API_KEY not configured')

@@ -48,15 +48,20 @@ export default function LandingPage() {
               Investimento
             </a>
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/login"
-              className="hidden sm:inline-flex text-gray-400 hover:text-white transition-colors font-medium text-sm"
+              className="inline-flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors font-medium text-sm px-3 py-2 rounded-lg hover:bg-dark-800 border border-dark-700"
             >
-              Area do Aluno
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span className="hidden sm:inline">Area do Aluno</span>
+              <span className="sm:hidden">Entrar</span>
             </Link>
-            <Link href="/checkout" className="btn-premium text-white text-sm py-2 px-4">
-              QUERO COMECAR
+            <Link href="/checkout" className="btn-premium text-white text-sm py-2 px-3 sm:px-4">
+              <span className="hidden sm:inline">QUERO COMECAR</span>
+              <span className="sm:hidden">COMECAR</span>
             </Link>
           </div>
         </div>

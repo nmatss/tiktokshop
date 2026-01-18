@@ -9,11 +9,15 @@ export default async function AulasPage() {
   // Get course with modules and lessons
   const courseSlug = process.env.COURSE_SLUG_DEFAULT || 'tiktok-shop-do-zero'
 
-  const { data: course } = await supabase
+  const { data: course, error: courseError } = await supabase
     .from('courses')
-    .select('*')
+    .select('id, slug, title, description')
     .eq('slug', courseSlug)
     .single()
+
+  if (courseError && courseError.code !== 'PGRST116') {
+    console.error('Error fetching course:', courseError.message)
+  }
 
   if (!course) {
     return (
@@ -29,21 +33,36 @@ export default async function AulasPage() {
     )
   }
 
-  // Get modules with lessons
-  const { data: modules } = await supabase
-    .from('modules')
-    .select(`
-      *,
-      lessons(*)
-    `)
-    .eq('course_id', course.id)
-    .order('order', { ascending: true })
+  // Batch fetch modules with lessons and user progress in parallel
+  const [modulesResult, progressResult] = await Promise.all([
+    // Get modules with lessons (only needed columns)
+    supabase
+      .from('modules')
+      .select(`
+        id,
+        title,
+        "order",
+        lessons(id, slug, title, "order", duration_sec)
+      `)
+      .eq('course_id', course.id)
+      .order('order', { ascending: true }),
+    // Get user's lesson progress (only needed columns)
+    supabase
+      .from('lesson_progress')
+      .select('id, lesson_id, completed, watched_seconds')
+      .eq('user_id', user.id),
+  ])
 
-  // Get user's lesson progress
-  const { data: progressData } = await supabase
-    .from('lesson_progress')
-    .select('*')
-    .eq('user_id', user.id)
+  // Handle errors
+  if (modulesResult.error) {
+    console.error('Error fetching modules:', modulesResult.error.message)
+  }
+  if (progressResult.error) {
+    console.error('Error fetching progress:', progressResult.error.message)
+  }
+
+  const modules = modulesResult.data
+  const progressData = progressResult.data
 
   // Create progress map
   const progressMap = new Map(

@@ -209,19 +209,19 @@ function PixPaymentContent() {
                   Como pagar:
                 </h3>
                 <ol className="space-y-2 text-sm text-gray-400">
-                  <li className="flex items-start gap-2">
+                  <li key="step-1" className="flex items-start gap-2">
                     <span className="w-5 h-5 bg-primary-500/20 rounded-full flex items-center justify-center text-primary-400 text-xs flex-shrink-0 mt-0.5">1</span>
                     Abra o app do seu banco
                   </li>
-                  <li className="flex items-start gap-2">
+                  <li key="step-2" className="flex items-start gap-2">
                     <span className="w-5 h-5 bg-primary-500/20 rounded-full flex items-center justify-center text-primary-400 text-xs flex-shrink-0 mt-0.5">2</span>
                     Escolha pagar via PIX com QR Code ou código
                   </li>
-                  <li className="flex items-start gap-2">
+                  <li key="step-3" className="flex items-start gap-2">
                     <span className="w-5 h-5 bg-primary-500/20 rounded-full flex items-center justify-center text-primary-400 text-xs flex-shrink-0 mt-0.5">3</span>
                     Escaneie o QR Code ou cole o código copiado
                   </li>
-                  <li className="flex items-start gap-2">
+                  <li key="step-4" className="flex items-start gap-2">
                     <span className="w-5 h-5 bg-primary-500/20 rounded-full flex items-center justify-center text-primary-400 text-xs flex-shrink-0 mt-0.5">4</span>
                     Confirme o pagamento
                   </li>

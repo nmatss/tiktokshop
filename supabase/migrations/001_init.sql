@@ -101,8 +101,12 @@ CREATE INDEX IF NOT EXISTS idx_entitlements_course_id ON public.entitlements(cou
 CREATE INDEX IF NOT EXISTS idx_entitlements_status ON public.entitlements(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_payments_user_id ON public.payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_asaas_id ON public.payments(asaas_payment_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON public.payments(status);
+CREATE INDEX IF NOT EXISTS idx_payments_user_status ON public.payments(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_lesson_progress_user_id ON public.lesson_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_lesson_progress_lesson_id ON public.lesson_progress(lesson_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_user_lesson ON public.lesson_progress(user_id, lesson_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_user_completed ON public.lesson_progress(user_id, completed);
 
 -- =====================================================
 -- ENABLE ROW LEVEL SECURITY

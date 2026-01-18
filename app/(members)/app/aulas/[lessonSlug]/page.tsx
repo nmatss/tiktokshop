@@ -14,46 +14,74 @@ export default async function LessonPage({ params }: Props) {
   const user = await requireEntitlement()
   const supabase = await createClient()
 
-  // Get lesson
-  const { data: lesson } = await supabase
+  // Get lesson with only needed columns
+  const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
     .select(`
-      *,
+      id,
+      slug,
+      title,
+      video_provider,
+      video_url,
+      duration_sec,
       module:modules(
-        *,
-        course:courses(*)
+        id,
+        title,
+        course:courses(id, slug, title)
       )
     `)
     .eq('slug', lessonSlug)
     .single()
 
+  if (lessonError && lessonError.code !== 'PGRST116') {
+    console.error('Error fetching lesson:', lessonError.message)
+  }
+
   if (!lesson) {
     notFound()
   }
 
-  // Get user's progress for this lesson
-  const { data: progress } = await supabase
-    .from('lesson_progress')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('lesson_id', lesson.id)
-    .single()
+  // Batch fetch progress, modules, and all user progress in parallel
+  const [progressResult, modulesResult, allProgressResult] = await Promise.all([
+    // Get user's progress for this lesson
+    supabase
+      .from('lesson_progress')
+      .select('id, watched_seconds, completed')
+      .eq('user_id', user.id)
+      .eq('lesson_id', lesson.id)
+      .single(),
+    // Get all modules with lessons for sidebar
+    supabase
+      .from('modules')
+      .select(`
+        id,
+        title,
+        "order",
+        lessons(id, slug, title, "order", duration_sec)
+      `)
+      .eq('course_id', lesson.module.course.id)
+      .order('order', { ascending: true }),
+    // Get all user progress
+    supabase
+      .from('lesson_progress')
+      .select('id, lesson_id, completed, watched_seconds')
+      .eq('user_id', user.id),
+  ])
 
-  // Get all modules with lessons for sidebar
-  const { data: modules } = await supabase
-    .from('modules')
-    .select(`
-      *,
-      lessons(*)
-    `)
-    .eq('course_id', lesson.module.course.id)
-    .order('order', { ascending: true })
+  // Handle errors gracefully (PGRST116 = no rows found, which is expected)
+  if (progressResult.error && progressResult.error.code !== 'PGRST116') {
+    console.error('Error fetching progress:', progressResult.error.message)
+  }
+  if (modulesResult.error) {
+    console.error('Error fetching modules:', modulesResult.error.message)
+  }
+  if (allProgressResult.error) {
+    console.error('Error fetching all progress:', allProgressResult.error.message)
+  }
 
-  // Get all user progress
-  const { data: allProgress } = await supabase
-    .from('lesson_progress')
-    .select('*')
-    .eq('user_id', user.id)
+  const progress = progressResult.data
+  const modules = modulesResult.data
+  const allProgress = allProgressResult.data
 
   const progressMap = new Map(
     allProgress?.map(p => [p.lesson_id, p]) || []

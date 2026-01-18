@@ -6,32 +6,49 @@ export default async function AdminPage() {
   await requireAdmin()
   const supabase = await createClient()
 
-  // Get stats
+  // Get stats - use 'id' column instead of '*' for count queries
   const [
-    { count: totalUsers },
-    { count: totalEntitlements },
-    { count: activeEntitlements },
-    { count: totalPayments },
-    { count: totalModules },
-    { count: totalLessons },
+    usersResult,
+    entitlementsResult,
+    activeEntitlementsResult,
+    paymentsResult,
+    modulesResult,
+    lessonsResult,
+    recentPaymentsResult,
   ] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('entitlements').select('*', { count: 'exact', head: true }),
-    supabase.from('entitlements').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-    supabase.from('payments').select('*', { count: 'exact', head: true }),
-    supabase.from('modules').select('*', { count: 'exact', head: true }),
-    supabase.from('lessons').select('*', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase.from('entitlements').select('id', { count: 'exact', head: true }),
+    supabase.from('entitlements').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+    supabase.from('payments').select('id', { count: 'exact', head: true }),
+    supabase.from('modules').select('id', { count: 'exact', head: true }),
+    supabase.from('lessons').select('id', { count: 'exact', head: true }),
+    // Get recent payments with only needed columns
+    supabase
+      .from('payments')
+      .select(`
+        id,
+        value_cents,
+        status,
+        created_at,
+        profile:profiles(name, email)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(5),
   ])
 
-  // Get recent payments
-  const { data: recentPayments } = await supabase
-    .from('payments')
-    .select(`
-      *,
-      profile:profiles(name, email)
-    `)
-    .order('created_at', { ascending: false })
-    .limit(5)
+  // Handle potential errors
+  if (usersResult.error) console.error('Error fetching users count:', usersResult.error.message)
+  if (entitlementsResult.error) console.error('Error fetching entitlements count:', entitlementsResult.error.message)
+  if (paymentsResult.error) console.error('Error fetching payments count:', paymentsResult.error.message)
+  if (recentPaymentsResult.error) console.error('Error fetching recent payments:', recentPaymentsResult.error.message)
+
+  const totalUsers = usersResult.count
+  const totalEntitlements = entitlementsResult.count
+  const activeEntitlements = activeEntitlementsResult.count
+  const totalPayments = paymentsResult.count
+  const totalModules = modulesResult.count
+  const totalLessons = lessonsResult.count
+  const recentPayments = recentPaymentsResult.data
 
   const conversionRate = totalUsers && totalUsers > 0
     ? Math.round(((activeEntitlements || 0) / totalUsers) * 100)

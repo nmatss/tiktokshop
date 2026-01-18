@@ -34,10 +34,19 @@ export default function CheckoutPage() {
         throw new Error(data.error || 'Erro ao processar pagamento')
       }
 
-      if (data.paymentUrl) {
-        window.location.href = data.paymentUrl
-      } else if (data.pixQrCode || data.paymentId) {
+      // Handle different payment types
+      if (data.billingType === 'PIX' && data.paymentId) {
+        // PIX: show QR code page
         window.location.href = `/checkout/pix?id=${data.paymentId}`
+      } else if (data.billingType === 'BOLETO' && (data.bankSlipUrl || data.paymentUrl)) {
+        // Boleto: redirect to bank slip or invoice URL
+        window.location.href = data.bankSlipUrl || data.paymentUrl
+      } else if (data.billingType === 'CREDIT_CARD' && data.paymentUrl) {
+        // Card: redirect to Asaas checkout
+        window.location.href = data.paymentUrl
+      } else if (data.paymentUrl) {
+        // Fallback: use invoice URL
+        window.location.href = data.paymentUrl
       } else {
         throw new Error('Não foi possível processar o pagamento. Tente novamente.')
       }

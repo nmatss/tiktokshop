@@ -60,7 +60,33 @@ export function safeLog(event: string, data: Record<string, unknown>): void {
   console.log(`[${event}]`, truncatedData)
 }
 
-// Rate limiting helper (simple in-memory for MVP)
+/**
+ * Rate limiting helper (simple in-memory for MVP)
+ *
+ * IMPORTANT: SERVERLESS LIMITATION
+ * ---------------------------------
+ * This in-memory rate limiting implementation will NOT work correctly in serverless
+ * environments (Vercel, AWS Lambda, etc.) because:
+ * 1. Each function invocation may run in a separate container with fresh memory
+ * 2. Multiple concurrent instances won't share the rate limit state
+ * 3. Cold starts reset the rate limit counters
+ *
+ * FOR PRODUCTION, use a distributed rate limiting solution:
+ * - Upstash Redis (@upstash/ratelimit): https://github.com/upstash/ratelimit
+ * - Redis with sliding window: https://redis.io/commands/incr/
+ * - Vercel KV: https://vercel.com/docs/storage/vercel-kv
+ *
+ * Example with Upstash:
+ * ```
+ * import { Ratelimit } from '@upstash/ratelimit'
+ * import { Redis } from '@upstash/redis'
+ *
+ * const ratelimit = new Ratelimit({
+ *   redis: Redis.fromEnv(),
+ *   limiter: Ratelimit.slidingWindow(100, '1 m'),
+ * })
+ * ```
+ */
 const requestCounts = new Map<string, { count: number; resetAt: number }>()
 
 export function checkRateLimit(

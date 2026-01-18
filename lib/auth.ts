@@ -33,19 +33,32 @@ export async function getUser(): Promise<AuthUser | null> {
     return null
   }
 
-  // Get profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Batch fetch profile and entitlements in parallel to avoid N+1 queries
+  const [profileResult, entitlementsResult] = await Promise.all([
+    // Get profile with only needed columns
+    supabase
+      .from('profiles')
+      .select('id, name, email, role, created_at')
+      .eq('id', user.id)
+      .single(),
+    // Check for active entitlement with only needed columns
+    supabase
+      .from('entitlements')
+      .select('id, status, expires_at')
+      .eq('user_id', user.id)
+      .eq('status', 'active'),
+  ])
 
-  // Check for active entitlement
-  const { data: entitlements } = await supabase
-    .from('entitlements')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
+  // Handle errors gracefully
+  if (profileResult.error && profileResult.error.code !== 'PGRST116') {
+    console.error('Error fetching profile:', profileResult.error.message)
+  }
+  if (entitlementsResult.error) {
+    console.error('Error fetching entitlements:', entitlementsResult.error.message)
+  }
+
+  const profile = profileResult.data
+  const entitlements = entitlementsResult.data
 
   const hasActiveEntitlement = entitlements && entitlements.length > 0 &&
     entitlements.some(e => !e.expires_at || new Date(e.expires_at) > new Date())
@@ -95,8 +108,12 @@ export async function getUserEntitlements(userId: string) {
   const { data, error } = await supabase
     .from('entitlements')
     .select(`
-      *,
-      course:courses(*)
+      id,
+      status,
+      activated_at,
+      expires_at,
+      created_at,
+      course:courses(id, slug, title, description)
     `)
     .eq('user_id', userId)
 

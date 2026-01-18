@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 interface LessonPlayerProps {
@@ -21,8 +21,12 @@ export function LessonPlayer({
   onComplete,
 }: LessonPlayerProps) {
   const lastSavedProgress = useRef(initialProgress)
-  const progressInterval = useRef<NodeJS.Timeout>()
-  const supabase = createClient()
+  const progressInterval = useRef<NodeJS.Timeout | null>(null)
+  // Memoize supabase client to prevent recreation on every render
+  const supabase = useMemo(() => createClient(), [])
+  // Use ref for onComplete to avoid dependency issues
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
 
   // Extract video ID based on provider
   const getEmbedUrl = useCallback(() => {
@@ -72,30 +76,30 @@ export function LessonPlayer({
 
       if (!error) {
         lastSavedProgress.current = watchedSeconds
-        if (completed && onComplete) {
-          onComplete()
+        if (completed) {
+          onCompleteRef.current?.()
         }
       }
     } catch (err) {
       console.error('Error saving progress:', err)
     }
-  }, [lessonId, supabase, onComplete])
+  }, [lessonId, supabase])
 
   // Setup progress tracking (simplified - real implementation would use postMessage API)
   useEffect(() => {
     // For MVP, save progress every 30 seconds
-    progressInterval.current = setInterval(() => {
+    const interval = setInterval(() => {
       // In a full implementation, you'd get actual time from the video player
       // For now, increment by 30 seconds as a placeholder
       lastSavedProgress.current += 30
       saveProgress(lastSavedProgress.current)
     }, 30000)
+    progressInterval.current = interval
 
     return () => {
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current)
-      }
-      // Save final progress on unmount
+      clearInterval(interval)
+      progressInterval.current = null
+      // Save final progress on unmount (fire and forget)
       saveProgress(lastSavedProgress.current)
     }
   }, [saveProgress])
@@ -115,7 +119,7 @@ export function LessonPlayer({
       </div>
 
       <div className="mt-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-dark-900">{title}</h1>
+        <h1 className="text-xl font-semibold text-white">{title}</h1>
         <button
           onClick={() => saveProgress(lastSavedProgress.current, true)}
           className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 
 interface CountdownTimerProps {
   targetDate?: Date
@@ -17,12 +17,14 @@ export function CountdownTimer({
   showLabels = true,
   size = 'md',
 }: CountdownTimerProps) {
-  // Default: 3 days from now (creates urgency)
-  const defaultTarget = new Date()
-  defaultTarget.setDate(defaultTarget.getDate() + 3)
-  defaultTarget.setHours(23, 59, 59, 999)
-
-  const target = targetDate || defaultTarget
+  // Default: 3 days from now (creates urgency) - memoized to prevent new Date on every render
+  const target = useMemo(() => {
+    if (targetDate) return targetDate
+    const defaultTarget = new Date()
+    defaultTarget.setDate(defaultTarget.getDate() + 3)
+    defaultTarget.setHours(23, 59, 59, 999)
+    return defaultTarget
+  }, [targetDate])
 
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
@@ -31,24 +33,32 @@ export function CountdownTimer({
     seconds: 0,
   })
 
-  useEffect(() => {
-    const calculateTimeLeft = () => {
-      const now = new Date().getTime()
-      const distance = target.getTime() - now
+  // Use ref to track if onComplete has been called to prevent multiple calls
+  const completedRef = useRef(false)
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
 
-      if (distance <= 0) {
-        onComplete?.()
-        return { days: 0, hours: 0, minutes: 0, seconds: 0 }
-      }
+  const calculateTimeLeft = useCallback(() => {
+    const now = new Date().getTime()
+    const distance = target.getTime() - now
 
-      return {
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        seconds: Math.floor((distance % (1000 * 60)) / 1000),
+    if (distance <= 0) {
+      if (!completedRef.current) {
+        completedRef.current = true
+        onCompleteRef.current?.()
       }
+      return { days: 0, hours: 0, minutes: 0, seconds: 0 }
     }
 
+    return {
+      days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+      seconds: Math.floor((distance % (1000 * 60)) / 1000),
+    }
+  }, [target])
+
+  useEffect(() => {
     setTimeLeft(calculateTimeLeft())
 
     const timer = setInterval(() => {
@@ -56,7 +66,7 @@ export function CountdownTimer({
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [target, onComplete])
+  }, [calculateTimeLeft])
 
   const sizeClasses = {
     sm: {

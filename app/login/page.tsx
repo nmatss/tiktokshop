@@ -6,10 +6,49 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
+/**
+ * Validates and sanitizes redirect URL to prevent open redirect attacks.
+ * Only allows relative paths starting with '/' that don't include protocol or host.
+ */
+function getSafeRedirectUrl(redirectParam: string | null): string {
+  const defaultRedirect = '/app'
+
+  if (!redirectParam) {
+    return defaultRedirect
+  }
+
+  // Trim whitespace
+  const redirect = redirectParam.trim()
+
+  // Must start with a single forward slash (not // which could be protocol-relative)
+  if (!redirect.startsWith('/') || redirect.startsWith('//')) {
+    return defaultRedirect
+  }
+
+  // Block any URLs that contain protocol indicators
+  if (redirect.includes(':') || redirect.includes('\\')) {
+    return defaultRedirect
+  }
+
+  // Additional check: ensure the path doesn't try to escape via encoded characters
+  // Decode and re-check to prevent URL-encoded attacks like %2F%2F
+  try {
+    const decoded = decodeURIComponent(redirect)
+    if (decoded.startsWith('//') || decoded.includes(':') || decoded.includes('\\')) {
+      return defaultRedirect
+    }
+  } catch {
+    // If decoding fails, reject the URL
+    return defaultRedirect
+  }
+
+  return redirect
+}
+
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/app'
+  const redirectTo = getSafeRedirectUrl(searchParams.get('redirect'))
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
   const [email, setEmail] = useState('')
